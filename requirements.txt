@@ -1,0 +1,4 @@
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+pillow==10.4.0
+piexif==1.1.3
