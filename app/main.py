@@ -6,6 +6,7 @@ from io import BytesIO
 
 from PIL import Image, PngImagePlugin, ExifTags
 import piexif
+import uvicorn
 
 app = FastAPI(title="Image Metadata Service", version="1.0.0")
 
@@ -244,3 +245,9 @@ def set_metadata(req: SetRequest):
 @app.get("/")
 def root():
     return {"service": "image-metadata", "version": "1.0.0", "endpoints": ["/metadata/read", "/metadata/set"]}
+
+if __name__ == "__main__":
+    import os
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("app.main:app", host=host, port=port)
