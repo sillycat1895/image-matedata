@@ -1,14 +1,14 @@
-# Image Metadata Service
+## Image Metadata Service (main2)
 
-A FastAPI service to read and set image metadata. Images are provided as base64 strings (optionally data: URLs).
+A FastAPI service to read and set image metadata using XMP for custom keys. Images are provided as base64 strings (optionally data: URLs).
 
-## Features
-- Read EXIF for JPEG/TIFF/WebP when available
-- Read PNG text chunks
-- Set EXIF fields for JPEG/TIFF (description, artist, copyright, software, datetime, user_comment)
-- Set PNG text key/value pairs
+### Features
+- **XMP read/write for JPEG/PNG**: embeds/parses XMP, supports arbitrary custom keys (e.g., `AIGC`).
+- **EXIF read**: extracts available EXIF for JPEG/TIFF.
+- **PNG text read**: reads existing PNG text chunks.
+- **TIFF write fallback**: writes EXIF for TIFF (XMP not embedded in TIFF in this version).
 
-## Setup
+### Setup
 
 ```bash
 # (First-time) install venv support if missing
@@ -22,51 +22,54 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run
+### Run (main2)
 
 ```bash
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main2:app --host 0.0.0.0 --port 8000
 ```
 
 Open docs at `http://localhost:8000/docs`.
 
-## API
+### API
 
-- POST `/metadata/read`
-  - body:
+- **POST** `/metadata/read`
+  - **body**:
     ```json
     { "image_base64": "<base64 or data URL>" }
     ```
-  - response:
+  - **response** (fields returned when available):
     ```json
     {
       "format": "JPEG|PNG|TIFF|...",
       "width": 1000,
       "height": 800,
-      "exif": {"Artist": "...", "UserComment": "..."},
-      "png_text": {"Description": "..."}
+      "exif": { "Artist": "...", "UserComment": "..." },
+      "png_text": { "Description": "..." },
+      "xmp": { "description": "...", "AIGC": "true", "software": "..." }
     }
     ```
 
-- POST `/metadata/set`
-  - JPEG/TIFF EXIF fields supported: `description, artist, copyright, software, datetime, user_comment`
-  - PNG supports arbitrary text key/values
-  - body:
+- **POST** `/metadata/set`
+  - **JPEG/PNG**: writes XMP, allowing arbitrary custom keys, e.g. `AIGC`.
+  - **TIFF**: writes EXIF as a fallback (same input keys accepted; stored in EXIF where applicable).
+  - **body**:
     ```json
     {
       "image_base64": "<base64 or data URL>",
-      "set": {"description": "example"}
+      "set": { "AIGC": "true", "description": "example", "software": "IMS" }
     }
     ```
-  - response:
+  - **response**:
     ```json
     {
       "image_base64": "<updated image base64>",
-      "format": "JPEG",
-      "updated": {"description": "example"}
+      "format": "JPEG|PNG|TIFF",
+      "updated": { "AIGC": "true", "description": "example", "software": "IMS" }
     }
     ```
 
-## Notes
-- WebP EXIF reading may be limited depending on Pillow version.
-- When writing EXIF, the image is re-encoded. PNG text updates preserve existing text entries when possible.
+### Notes
+- **Custom keys**: Any key in `set` is embedded into XMP for JPEG/PNG and returned under `xmp` when reading.
+- **DateTime**: When provided, attempts to normalize to ISO-8601 (`xmp:ModifyDate`).
+- **Re-encoding**: Writing metadata re-encodes the image. PNG updates preserve existing text entries where possible.
+- **Limitations**: TIFF XMP embedding is not implemented in this version.
